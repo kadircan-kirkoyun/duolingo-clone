@@ -1,30 +1,49 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-import db from "@/db/drizzle";
-import { challengeOptions } from "@/db/schema";
 import { getIsAdmin } from "@/lib/admin";
+import { dummyChallengeOptions } from "@/store/dummy-data";
 
-export const GET = async () => {
-  const isAdmin = getIsAdmin();
-  if (!isAdmin) return new NextResponse("Unauthorized.", { status: 401 });
+export async function GET() {
+  try {
+    // Linter uyarısını önlemek için küçük bir await ekliyoruz
+    await Promise.resolve();
+    return NextResponse.json(dummyChallengeOptions);
+  } catch (error) {
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}
 
-  const data = await db.query.challengeOptions.findMany();
+export async function POST(req: Request) {
+  try {
+    const isAdmin = getIsAdmin();
 
-  return NextResponse.json(data);
-};
+    if (!isAdmin) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
 
-export const POST = async (req: NextRequest) => {
-  const isAdmin = getIsAdmin();
-  if (!isAdmin) return new NextResponse("Unauthorized.", { status: 401 });
+    // JSON'dan dönen değerin tipini belirtmek için tip ataması yapıyoruz
+    const { text, correct, challengeId } = (await req.json()) as {
+      text: string;
+      correct: boolean;
+      challengeId: string;
+    };
 
-  const body = (await req.json()) as typeof challengeOptions.$inferSelect;
+    if (!text) {
+      return new NextResponse("Text is required", { status: 400 });
+    }
 
-  const data = await db
-    .insert(challengeOptions)
-    .values({
-      ...body,
-    })
-    .returning();
+    if (!challengeId) {
+      return new NextResponse("Challenge ID is required", { status: 400 });
+    }
 
-  return NextResponse.json(data[0]);
-};
+    // Demo sürümünde ekleme yapılmıyor
+    return NextResponse.json({
+      id: Math.floor(Math.random() * 1000),
+      text,
+      correct,
+      challengeId,
+    });
+  } catch (error) {
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}

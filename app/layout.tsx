@@ -1,4 +1,3 @@
-import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
 
@@ -7,6 +6,7 @@ import { HeartsModal } from "@/components/modals/hearts-modal";
 import { PracticeModal } from "@/components/modals/practice-modal";
 import { Toaster } from "@/components/ui/sonner";
 import { siteConfig } from "@/config";
+import { AuthProvider } from "@/lib/auth-context";
 
 import "./globals.css";
 
@@ -16,7 +16,19 @@ export const viewport: Viewport = {
   themeColor: "#22C55E",
 };
 
-export const metadata: Metadata = siteConfig;
+export const metadata: Metadata = {
+  title: {
+    template: "%s | Lingo",
+    default: "Lingo - Learn a new language",
+  },
+  description: siteConfig.description,
+  icons: [
+    {
+      url: "/favicon.ico",
+      href: "/favicon.ico",
+    },
+  ],
+};
 
 export default function RootLayout({
   children,
@@ -24,25 +36,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider
-      appearance={{
-        layout: {
-          logoImageUrl: "/favicon.ico",
-        },
-        variables: {
-          colorPrimary: "#22C55E",
-        },
-      }}
-    >
-      <html lang="en">
-        <body className={font.className}>
+    <html lang="en">
+      <body className={font.className}>
+        <AuthProvider>
           <Toaster theme="light" richColors closeButton />
           <ExitModal />
           <HeartsModal />
           <PracticeModal />
           {children}
-        </body>
-      </html>
-    </ClerkProvider>
+        </AuthProvider>
+      </body>
+    </html>
   );
 }

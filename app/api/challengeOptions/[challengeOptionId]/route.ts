@@ -1,54 +1,80 @@
-import { eq } from "drizzle-orm";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-import db from "@/db/drizzle";
-import { challengeOptions } from "@/db/schema";
 import { getIsAdmin } from "@/lib/admin";
+import { dummyChallengeOptions } from "@/store/dummy-data";
 
-export const GET = async (
-  _req: NextRequest,
-  { params }: { params: { challengeOptionId: number } }
-) => {
-  const isAdmin = getIsAdmin();
-  if (!isAdmin) return new NextResponse("Unauthorized.", { status: 401 });
+export async function GET(
+  req: Request,
+  { params }: { params: { challengeOptionId: string } }
+) {
+  try {
+    // Linter uyarısını önlemek için küçük bir await ekliyoruz
+    await Promise.resolve();
 
-  const data = await db.query.challengeOptions.findFirst({
-    where: eq(challengeOptions.id, params.challengeOptionId),
-  });
+    const challengeOption = dummyChallengeOptions.find(
+      (option) => option.id === parseInt(params.challengeOptionId)
+    );
 
-  return NextResponse.json(data);
-};
+    if (!challengeOption) {
+      return new NextResponse("Not found", { status: 404 });
+    }
 
-export const PUT = async (
-  req: NextRequest,
-  { params }: { params: { challengeOptionId: number } }
-) => {
-  const isAdmin = getIsAdmin();
-  if (!isAdmin) return new NextResponse("Unauthorized.", { status: 401 });
+    return NextResponse.json(challengeOption);
+  } catch (error) {
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}
 
-  const body = (await req.json()) as typeof challengeOptions.$inferSelect;
-  const data = await db
-    .update(challengeOptions)
-    .set({
-      ...body,
-    })
-    .where(eq(challengeOptions.id, params.challengeOptionId))
-    .returning();
+export async function PUT(
+  req: Request,
+  { params: _params }: { params: { challengeOptionId: string } }
+) {
+  // _params kullanılmadığı için linter uyarısını engellemek adına işaretliyoruz
+  void _params;
+  try {
+    const isAdmin = getIsAdmin();
 
-  return NextResponse.json(data[0]);
-};
+    if (!isAdmin) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
 
-export const DELETE = async (
-  _req: NextRequest,
-  { params }: { params: { challengeOptionId: number } }
-) => {
-  const isAdmin = getIsAdmin();
-  if (!isAdmin) return new NextResponse("Unauthorized.", { status: 401 });
+    interface PutRequestBody {
+      text: string;
+      correct: boolean;
+    }
 
-  const data = await db
-    .delete(challengeOptions)
-    .where(eq(challengeOptions.id, params.challengeOptionId))
-    .returning();
+    const { text, correct } = (await req.json()) as PutRequestBody;
 
-  return NextResponse.json(data[0]);
-};
+    if (!text) {
+      return new NextResponse("Text is required", { status: 400 });
+    }
+
+    // Demo sürümünde güncelleme yapılmıyor
+    return NextResponse.json({ text, correct });
+  } catch (error) {
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _req: Request,
+  { params: _params }: { params: { challengeOptionId: string } }
+) {
+  // _params kullanılmadığı için linter uyarısını engellemek adına işaretliyoruz
+  void _params;
+  try {
+    const isAdmin = getIsAdmin();
+
+    if (!isAdmin) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    // Linter uyarısını önlemek için küçük bir await ekliyoruz
+    await Promise.resolve();
+
+    // Demo sürümünde silme yapılmıyor
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}

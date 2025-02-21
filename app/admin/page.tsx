@@ -1,14 +1,15 @@
+"use client";
 import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 
-import { getIsAdmin } from "@/lib/admin";
+import { useAuth } from "@/lib/auth-context";
 
 const App = dynamic(() => import("./app"), { ssr: false });
 
 const AdminPage = () => {
-  const isAdmin = getIsAdmin();
+  const { isAuthenticated } = useAuth();
 
-  if (!isAdmin) redirect("/");
+  if (!isAuthenticated) redirect("/");
 
   return (
     <div>

@@ -1,246 +1,187 @@
 import { cache } from "react";
-
-import { auth } from "@clerk/nextjs";
-import { eq } from "drizzle-orm";
-
-import db from "./drizzle";
 import {
-  challengeProgress,
-  courses,
-  lessons,
-  units,
-  userProgress,
-  userSubscription,
-} from "./schema";
+  dummyChallenges,
+  dummyCourses,
+  dummyLessons,
+  dummyUnits,
+  dummyUserProgress
+} from "@/store/dummy-data";
 
-const DAY_IN_MS = 86_400_000;
+type Challenge = {
+  id: number;
+  lessonId: number;
+  type: string;
+  question: string;
+  order: number;
+};
 
-export const getCourses = cache(async () => {
-  const data = await db.query.courses.findMany();
+type Lesson = {
+  id: number;
+  unitId: number;
+  title: string;
+  order: number;
+};
 
-  return data;
-});
+type Unit = {
+  id: number;
+  courseId: number;
+  title: string;
+  description: string;
+  order: number;
+};
 
-export const getUserProgress = cache(async () => {
-  const { userId } = auth();
+type LessonWithChallenges = Lesson & {
+  challenges: (Challenge & { completed: boolean })[];
+  completed: boolean;
+};
 
-  if (!userId) return null;
+type LessonWithUnit = LessonWithChallenges & {
+  unit: Unit;
+};
 
-  const data = await db.query.userProgress.findFirst({
-    where: eq(userProgress.userId, userId),
-    with: {
-      activeCourse: true,
-    },
+// Removed unused types and constants (UnitWithLessons, DAY_IN_MS)
+
+export const getCourses = cache(() => Promise.resolve(dummyCourses));
+
+export const getUserProgress = cache(() => Promise.resolve(dummyUserProgress));
+
+export const getUnits = cache(() =>
+  Promise.resolve(
+    dummyUnits.map((unit) => ({
+      ...unit,
+      lessons: dummyLessons
+        .filter((lesson) => lesson.unitId === unit.id)
+        .map((lesson) => ({
+          ...lesson,
+          challenges: dummyChallenges
+            .filter((challenge) => challenge.lessonId === lesson.id)
+            .map((challenge) => ({
+              ...challenge,
+              completed: Math.random() > 0.5,
+            })),
+          completed: Math.random() > 0.5,
+        })),
+    }))
+  )
+);
+
+export const getCourseById = cache((id: number) => {
+  const course = dummyCourses.find((course) => course.id === id);
+  if (!course) return Promise.resolve(null);
+
+  return Promise.resolve({
+    ...course,
+    units: dummyUnits
+      .filter((unit) => unit.courseId === course.id)
+      .map((unit) => ({
+        ...unit,
+        lessons: dummyLessons.filter((lesson) => lesson.unitId === unit.id),
+      })),
   });
-
-  return data;
-});
-
-export const getUnits = cache(async () => {
-  const { userId } = auth();
-  const userProgress = await getUserProgress();
-
-  if (!userId || !userProgress?.activeCourseId) return [];
-
-  const data = await db.query.units.findMany({
-    where: eq(units.courseId, userProgress.activeCourseId),
-    orderBy: (units, { asc }) => [asc(units.order)],
-    with: {
-      lessons: {
-        orderBy: (lessons, { asc }) => [asc(lessons.order)],
-        with: {
-          challenges: {
-            orderBy: (challenges, { asc }) => [asc(challenges.order)],
-            with: {
-              challengeProgress: {
-                where: eq(challengeProgress.userId, userId),
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  const normalizedData = data.map((unit) => {
-    const lessonsWithCompletedStatus = unit.lessons.map((lesson) => {
-      if (lesson.challenges.length === 0)
-        return { ...lesson, completed: false };
-
-      const allCompletedChallenges = lesson.challenges.every((challenge) => {
-        return (
-          challenge.challengeProgress &&
-          challenge.challengeProgress.length > 0 &&
-          challenge.challengeProgress.every((progress) => progress.completed)
-        );
-      });
-
-      return { ...lesson, completed: allCompletedChallenges };
-    });
-
-    return { ...unit, lessons: lessonsWithCompletedStatus };
-  });
-
-  return normalizedData;
-});
-
-export const getCourseById = cache(async (courseId: number) => {
-  const data = await db.query.courses.findFirst({
-    where: eq(courses.id, courseId),
-    with: {
-      units: {
-        orderBy: (units, { asc }) => [asc(units.order)],
-        with: {
-          lessons: {
-            orderBy: (lessons, { asc }) => [asc(lessons.order)],
-          },
-        },
-      },
-    },
-  });
-
-  return data;
 });
 
 export const getCourseProgress = cache(async () => {
-  const { userId } = auth();
-  const userProgress = await getUserProgress();
-
-  if (!userId || !userProgress?.activeCourseId) return null;
-
-  const unitsInActiveCourse = await db.query.units.findMany({
-    orderBy: (units, { asc }) => [asc(units.order)],
-    where: eq(units.courseId, userProgress.activeCourseId),
-    with: {
-      lessons: {
-        orderBy: (lessons, { asc }) => [asc(lessons.order)],
-        with: {
-          unit: true,
-          challenges: {
-            with: {
-              challengeProgress: {
-                where: eq(challengeProgress.userId, userId),
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  const firstUncompletedLesson = unitsInActiveCourse
+  const units = await getUnits();
+  const firstIncompleteLesson = units
     .flatMap((unit) => unit.lessons)
-    .find((lesson) => {
-      return lesson.challenges.some((challenge) => {
-        return (
-          !challenge.challengeProgress ||
-          challenge.challengeProgress.length === 0 ||
-          challenge.challengeProgress.some((progress) => !progress.completed)
-        );
-      });
-    });
+    .find((lesson) => !lesson.completed);
+
+  let activeLesson: LessonWithUnit | undefined;
+
+  if (firstIncompleteLesson) {
+    const unit = units.find((unit) =>
+      unit.lessons.some((lesson) => lesson.id === firstIncompleteLesson.id)
+    );
+    if (unit) {
+      activeLesson = {
+        ...firstIncompleteLesson,
+        unit: {
+          id: unit.id,
+          title: unit.title,
+          description: unit.description,
+          courseId: unit.courseId,
+          order: unit.order,
+        },
+      };
+    }
+  }
 
   return {
-    activeLesson: firstUncompletedLesson,
-    activeLessonId: firstUncompletedLesson?.id,
+    activeLesson,
+    activeLessonId: activeLesson?.id,
   };
 });
 
-export const getLesson = cache(async (id?: number) => {
-  const { userId } = auth();
+export const getLesson = cache((id?: number) => {
+  if (!id) return Promise.resolve(null);
 
-  if (!userId) return null;
+  const lesson = dummyLessons.find((lesson) => lesson.id === id);
+  if (!lesson) return Promise.resolve(null);
 
-  const courseProgress = await getCourseProgress();
-  const lessonId = id || courseProgress?.activeLessonId;
-
-  if (!lessonId) return null;
-
-  const data = await db.query.lessons.findFirst({
-    where: eq(lessons.id, lessonId),
-    with: {
-      challenges: {
-        orderBy: (challenges, { asc }) => [asc(challenges.order)],
-        with: {
-          challengeOptions: true,
-          challengeProgress: {
-            where: eq(challengeProgress.userId, userId),
-          },
-        },
-      },
-    },
+  return Promise.resolve({
+    ...lesson,
+    challenges: dummyChallenges
+      .filter((challenge) => challenge.lessonId === lesson.id)
+      .map((challenge) => ({
+        ...challenge,
+        completed: Math.random() > 0.5,
+      })),
   });
-
-  if (!data || !data.challenges) return null;
-
-  const normalizedChallenges = data.challenges.map((challenge) => {
-    const completed =
-      challenge.challengeProgress &&
-      challenge.challengeProgress.length > 0 &&
-      challenge.challengeProgress.every((progress) => progress.completed);
-
-    return { ...challenge, completed };
-  });
-
-  return { ...data, challenges: normalizedChallenges };
 });
 
 export const getLessonPercentage = cache(async () => {
   const courseProgress = await getCourseProgress();
-
   if (!courseProgress?.activeLessonId) return 0;
 
-  const lesson = await getLesson(courseProgress?.activeLessonId);
-
+  const lesson = await getLesson(courseProgress.activeLessonId);
   if (!lesson) return 0;
 
   const completedChallenges = lesson.challenges.filter(
     (challenge) => challenge.completed
   );
-
-  const percentage = Math.round(
+  return Math.round(
     (completedChallenges.length / lesson.challenges.length) * 100
   );
-
-  return percentage;
 });
 
-export const getUserSubscription = cache(async () => {
-  const { userId } = auth();
-
-  if (!userId) return null;
-
-  const data = await db.query.userSubscription.findFirst({
-    where: eq(userSubscription.userId, userId),
-  });
-
-  if (!data) return null;
-
-  const isActive =
-    data.stripePriceId &&
-    data.stripeCurrentPeriodEnd?.getTime() + DAY_IN_MS > Date.now();
-
+export const getUserSubscription = () => {
   return {
-    ...data,
-    isActive: !!isActive,
+    isActive: false,
+    userId: "demo-user",
   };
-});
+};
 
-export const getTopTenUsers = cache(async () => {
-  const { userId } = auth();
-
-  if (!userId) return [];
-
-  const data = await db.query.userProgress.findMany({
-    orderBy: (userProgress, { desc }) => [desc(userProgress.points)],
-    limit: 10,
-    columns: {
-      userId: true,
-      userName: true,
-      userImageSrc: true,
-      points: true,
+export const getTopTenUsers = () => {
+  return [
+    {
+      userId: "1",
+      userName: "Ahmet",
+      userImageSrc: "/avatars/1.png",
+      points: 1200,
     },
-  });
-
-  return data;
-});
+    {
+      userId: "2",
+      userName: "Mehmet",
+      userImageSrc: "/avatars/2.png",
+      points: 1000,
+    },
+    {
+      userId: "3",
+      userName: "Ayşe",
+      userImageSrc: "/avatars/3.png",
+      points: 800,
+    },
+    {
+      userId: "4",
+      userName: "Fatma",
+      userImageSrc: "/avatars/4.png",
+      points: 600,
+    },
+    {
+      userId: "5",
+      userName: "Ali",
+      userImageSrc: "/avatars/5.png",
+      points: 400,
+    },
+  ];
+};

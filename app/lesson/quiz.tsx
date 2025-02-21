@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+
 import Confetti from "react-confetti";
 import { useAudio, useWindowSize, useMount } from "react-use";
 import { toast } from "sonner";
@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { upsertChallengeProgress } from "@/actions/challenge-progress";
 import { reduceHearts } from "@/actions/user-progress";
 import { MAX_HEARTS } from "@/constants";
-import { challengeOptions, challenges, userSubscription } from "@/db/schema";
+import { challengeOptions, challenges } from "@/db/schema";
 import { useHeartsModal } from "@/store/use-hearts-modal";
 import { usePracticeModal } from "@/store/use-practice-modal";
 
@@ -29,11 +29,11 @@ type QuizProps = {
     completed: boolean;
     challengeOptions: (typeof challengeOptions.$inferSelect)[];
   })[];
-  userSubscription:
-    | (typeof userSubscription.$inferSelect & {
-        isActive: boolean;
-      })
-    | null;
+  userSubscription: { isActive: boolean; userId: string } | null;
+};
+
+type ActionResponse = {
+  error?: string;
 };
 
 export const Quiz = ({
@@ -43,10 +43,8 @@ export const Quiz = ({
   initialLessonChallenges,
   userSubscription,
 }: QuizProps) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [correctAudio, _c, correctControls] = useAudio({ src: "/correct.wav" });
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [incorrectAudio, _i, incorrectControls] = useAudio({
+  const [correctAudio, , correctControls] = useAudio({ src: "/correct.wav" });
+  const [incorrectAudio, , incorrectControls] = useAudio({
     src: "/incorrect.wav",
   });
   const [finishAudio] = useAudio({
@@ -66,15 +64,14 @@ export const Quiz = ({
 
   const [lessonId] = useState(initialLessonId);
   const [hearts, setHearts] = useState(initialHearts);
-  const [percentage, setPercentage] = useState(() => {
-    return initialPercentage === 100 ? 0 : initialPercentage;
-  });
+  const [percentage, setPercentage] = useState(() =>
+    initialPercentage === 100 ? 0 : initialPercentage
+  );
   const [challenges] = useState(initialLessonChallenges);
   const [activeIndex, setActiveIndex] = useState(() => {
     const uncompletedIndex = challenges.findIndex(
       (challenge) => !challenge.completed
     );
-
     return uncompletedIndex === -1 ? 0 : uncompletedIndex;
   });
 
@@ -90,7 +87,6 @@ export const Quiz = ({
 
   const onSelect = (id: number) => {
     if (status !== "none") return;
-
     setSelectedOption(id);
   };
 
@@ -111,44 +107,43 @@ export const Quiz = ({
     }
 
     const correctOption = options.find((option) => option.correct);
-
     if (!correctOption) return;
 
     if (correctOption.id === selectedOption) {
       startTransition(() => {
-        upsertChallengeProgress(challenge.id)
+        (upsertChallengeProgress() as unknown as Promise<ActionResponse>)
           .then((response) => {
             if (response?.error === "hearts") {
               openHeartsModal();
               return;
             }
-
             void correctControls.play();
             setStatus("correct");
             setPercentage((prev) => prev + 100 / challenges.length);
-
-            // This is a practice
             if (initialPercentage === 100) {
               setHearts((prev) => Math.min(prev + 1, MAX_HEARTS));
             }
           })
-          .catch(() => toast.error("Something went wrong. Please try again."));
+          .catch(() =>
+            toast("Something went wrong. Please try again.")
+          );
       });
     } else {
       startTransition(() => {
-        reduceHearts(challenge.id)
+        (reduceHearts() as unknown as Promise<ActionResponse>)
           .then((response) => {
             if (response?.error === "hearts") {
               openHeartsModal();
               return;
             }
-
             void incorrectControls.play();
             setStatus("wrong");
-
-            if (!response?.error) setHearts((prev) => Math.max(prev - 1, 0));
+            if (!response?.error)
+              setHearts((prev) => Math.max(prev - 1, 0));
           })
-          .catch(() => toast.error("Something went wrong. Please try again."));
+          .catch(() =>
+            toast("Something went wrong. Please try again.")
+          );
       });
     }
   };
@@ -172,7 +167,6 @@ export const Quiz = ({
             height={100}
             width={100}
           />
-
           <Image
             src="/finish.svg"
             alt="Finish"
@@ -180,11 +174,9 @@ export const Quiz = ({
             height={100}
             width={100}
           />
-
           <h1 className="text-lg font-bold text-neutral-700 lg:text-3xl">
             Great job! <br /> You&apos;ve completed the lesson.
           </h1>
-
           <div className="flex w-full items-center gap-x-4">
             <ResultCard variant="points" value={challenges.length * 10} />
             <ResultCard
@@ -193,7 +185,6 @@ export const Quiz = ({
             />
           </div>
         </div>
-
         <Footer
           lessonId={lessonId}
           status="completed"
@@ -217,19 +208,16 @@ export const Quiz = ({
         percentage={percentage}
         hasActiveSubscription={!!userSubscription?.isActive}
       />
-
       <div className="flex-1">
         <div className="flex h-full items-center justify-center">
           <div className="flex w-full flex-col gap-y-12 px-6 lg:min-h-[350px] lg:w-[600px] lg:px-0">
             <h1 className="text-center text-lg font-bold text-neutral-700 lg:text-start lg:text-3xl">
               {title}
             </h1>
-
             <div>
               {challenge.type === "ASSIST" && (
                 <QuestionBubble question={challenge.question} />
               )}
-
               <Challenge
                 options={options}
                 onSelect={onSelect}
@@ -242,7 +230,6 @@ export const Quiz = ({
           </div>
         </div>
       </div>
-
       <Footer
         disabled={pending || !selectedOption}
         status={status}

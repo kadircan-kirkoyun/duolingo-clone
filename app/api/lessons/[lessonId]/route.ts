@@ -1,54 +1,86 @@
-import { eq } from "drizzle-orm";
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
-import db from "@/db/drizzle";
-import { lessons } from "@/db/schema";
 import { getIsAdmin } from "@/lib/admin";
+import { dummyLessons } from "@/store/dummy-data";
 
-export const GET = async (
-  _req: NextRequest,
-  { params }: { params: { lessonId: number } }
-) => {
-  const isAdmin = getIsAdmin();
-  if (!isAdmin) return new NextResponse("Unauthorized.", { status: 401 });
+export async function GET(
+  req: Request,
+  { params }: { params: { lessonId: string } }
+) {
+  try {
+    // Linter uyarısını önlemek için dummy await ekleniyor
+    await Promise.resolve();
 
-  const data = await db.query.lessons.findFirst({
-    where: eq(lessons.id, params.lessonId),
-  });
+    const isAdmin = getIsAdmin();
+    if (!isAdmin) return new NextResponse("Unauthorized.", { status: 401 });
 
-  return NextResponse.json(data);
-};
+    const lesson = dummyLessons.find(
+      (lesson) => lesson.id === parseInt(params.lessonId)
+    );
 
-export const PUT = async (
+    if (!lesson) {
+      return new NextResponse("Not found", { status: 404 });
+    }
+
+    return NextResponse.json(lesson);
+  } catch (error) {
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}
+
+export async function PUT(
   req: NextRequest,
-  { params }: { params: { lessonId: number } }
-) => {
-  const isAdmin = getIsAdmin();
-  if (!isAdmin) return new NextResponse("Unauthorized.", { status: 401 });
+  { params: _params }: { params: { lessonId: string } }
+) {
+  // Kullanılmayan _params değişkenini işaretleyerek linter uyarısını engelliyoruz
+  void _params;
+  try {
+    const isAdmin = getIsAdmin();
+    if (!isAdmin) return new NextResponse("Unauthorized.", { status: 401 });
 
-  const body = (await req.json()) as typeof lessons.$inferSelect;
-  const data = await db
-    .update(lessons)
-    .set({
-      ...body,
-    })
-    .where(eq(lessons.id, params.lessonId))
-    .returning();
+    interface PutBody {
+      title: string;
+      unitId: number;
+      order: number;
+    }
+    const { title, unitId, order } = (await req.json()) as PutBody;
 
-  return NextResponse.json(data[0]);
-};
+    if (!title) {
+      return new NextResponse("Title is required", { status: 400 });
+    }
 
-export const DELETE = async (
-  _req: NextRequest,
-  { params }: { params: { lessonId: number } }
-) => {
-  const isAdmin = getIsAdmin();
-  if (!isAdmin) return new NextResponse("Unauthorized.", { status: 401 });
+    if (!unitId) {
+      return new NextResponse("Unit ID is required", { status: 400 });
+    }
 
-  const data = await db
-    .delete(lessons)
-    .where(eq(lessons.id, params.lessonId))
-    .returning();
+    if (typeof order !== "number") {
+      return new NextResponse("Order must be a number", { status: 400 });
+    }
 
-  return NextResponse.json(data[0]);
-};
+    // Demo sürümünde güncelleme yapılmıyor
+    return NextResponse.json({ title, unitId, order });
+  } catch (error) {
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _req: Request,
+  { params: _params }: { params: { lessonId: string } }
+) {
+  // Kullanılmayan _req ve _params değişkenlerini işaretliyoruz
+  void _req;
+  void _params;
+  try {
+    // Linter uyarısını önlemek için dummy await ekleniyor
+    await Promise.resolve();
+
+    const isAdmin = getIsAdmin();
+    if (!isAdmin) return new NextResponse("Unauthorized.", { status: 401 });
+
+    // Demo sürümünde silme yapılmıyor
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}

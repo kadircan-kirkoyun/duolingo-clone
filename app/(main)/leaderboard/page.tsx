@@ -25,7 +25,7 @@ const LeaderboardPage = async () => {
     leaderboardData,
   ]);
 
-  if (!userProgress || !userProgress.activeCourse) redirect("/courses");
+  if (!userProgress?.activeCourseId) redirect("/courses");
 
   const isPro = !!userSubscription?.isActive;
 
@@ -38,47 +38,41 @@ const LeaderboardPage = async () => {
           points={userProgress.points}
           hasActiveSubscription={isPro}
         />
-        {!isPro && <Promo />}
+        <Separator className="my-4" />
         <Quests points={userProgress.points} />
+        <Promo />
       </StickyWrapper>
-
       <FeedWrapper>
-        <div className="flex w-full flex-col items-center">
-          <Image
-            src="/leaderboard.svg"
-            alt="Leaderboard"
-            height={90}
-            width={90}
-          />
-
-          <h1 className="my-6 text-center text-2xl font-bold text-neutral-800">
-            Leaderboard
-          </h1>
-          <p className="mb-6 text-center text-lg text-muted-foreground">
-            See where you stand among other learners in the community.
-          </p>
-
-          <Separator className="mb-4 h-0.5 rounded-full" />
-          {leaderboard.map((userProgress, i) => (
-            <div
-              key={userProgress.userId}
-              className="flex w-full items-center rounded-xl p-2 px-4 hover:bg-gray-200/50"
-            >
-              <p className="mr-4 font-bold text-lime-700">{i + 1}</p>
-
-              <Avatar className="ml-3 mr-6 h-12 w-12 border bg-green-500">
-                <AvatarImage
-                  src={userProgress.userImageSrc}
-                  className="object-cover"
-                />
-              </Avatar>
-
-              <p className="flex-1 font-bold text-neutral-800">
-                {userProgress.userName}
-              </p>
-              <p className="text-muted-foreground">{userProgress.points} XP</p>
-            </div>
-          ))}
+        <div className="w-full">
+          <h1 className="mb-6 text-2xl font-bold">Sıralama</h1>
+          <div className="space-y-4">
+            {leaderboard.map((userProgress) => (
+              <div
+                key={userProgress.userId}
+                className="flex items-center gap-x-4 rounded-xl bg-secondary/50 p-4"
+              >
+                <Avatar className="border-2">
+                  <AvatarImage src={userProgress.userImageSrc} />
+                </Avatar>
+                <div className="flex-1">
+                  <p className="text-base font-semibold">
+                    {userProgress.userName}
+                  </p>
+                </div>
+                <div className="flex items-center gap-x-2">
+                  <Image
+                    src="/points.svg"
+                    alt="Points"
+                    height={20}
+                    width={20}
+                  />
+                  <p className="text-base font-semibold">
+                    {userProgress.points}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </FeedWrapper>
     </div>

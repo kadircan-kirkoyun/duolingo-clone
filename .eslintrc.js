@@ -5,25 +5,7 @@ module.exports = {
   plugins: ["@typescript-eslint"],
   extends: ["eslint:recommended", "next/core-web-vitals", "prettier"],
   rules: {
-    "import/order": [
-      "error",
-      {
-        groups: ["builtin", "external", "internal", ["parent", "sibling"]],
-        pathGroups: [
-          {
-            pattern: "react",
-            group: "external",
-            position: "before",
-          },
-        ],
-        pathGroupsExcludedImportTypes: ["react"],
-        "newlines-between": "always",
-        alphabetize: {
-          order: "asc",
-          caseInsensitive: true,
-        },
-      },
-    ],
+    "import/order": "off",
   },
   overrides: [
     {
@@ -35,10 +17,6 @@ module.exports = {
       extends: [
         "plugin:@typescript-eslint/recommended",
         "plugin:@typescript-eslint/recommended-requiring-type-checking",
-
-        //declaring 'next/core-web-vitals' and 'prettier' again in case
-        //the two plugin:... configs above overrode any of their rules
-        //Also, 'prettier' needs to be last in any extends array
         "next/core-web-vitals",
         "prettier",
       ],

@@ -1,17 +1,12 @@
 {
-  "name": "duolingo-clone",
-  "version": "1.0.1",
+  "name": "lingo",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "format": "prettier --check --ignore-path .gitignore .",
-    "format:fix": "prettier --write --ignore-path .gitignore .",
-    "db:studio": "npx drizzle-kit studio",
-    "db:push": "npx drizzle-kit push:pg",
-    "db:prod": "tsx ./scripts/prod.ts"
+    "lint": "next lint"
   },
   "author": {
     "name": "Sanidhya Kumar Verma",
@@ -75,8 +70,6 @@
     }
   ],
   "dependencies": {
-    "@clerk/nextjs": "^4.31.5",
-    "@neondatabase/serverless": "^0.9.0",
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-progress": "^1.0.3",
@@ -84,10 +77,9 @@
     "@radix-ui/react-slot": "^1.0.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
-    "dotenv": "^16.4.5",
     "drizzle-orm": "^0.30.4",
     "lucide-react": "^0.359.0",
-    "next": "14.2.21",
+    "next": "14.1.4",
     "next-themes": "^0.3.0",
     "ra-data-simple-rest": "^4.16.12",
     "react": "^18",
@@ -97,7 +89,6 @@
     "react-dom": "^18",
     "react-use": "^17.5.0",
     "sonner": "^1.4.32",
-    "stripe": "^14.22.0",
     "tailwind-merge": "^2.2.2",
     "tailwindcss-animate": "^1.0.7",
     "zustand": "^4.5.2"
@@ -113,12 +104,11 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "14.1.4",
     "eslint-config-prettier": "^9.1.0",
-    "pg": "^8.11.3",
     "postcss": "^8",
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.5.12",
     "tailwindcss": "^3.3.0",
-    "tsx": "^4.7.1",
     "typescript": "^5"
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
